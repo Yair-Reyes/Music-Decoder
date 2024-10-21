@@ -1,4 +1,3 @@
-
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 
@@ -16,7 +15,7 @@ end mucodec;
 architecture Behavioral of mucodec is
 
     -- State enumeration
-    type state_type is (St_RESET, St_ERROR, St_START, St_STOP, ST_VALIDATE);
+    type state_type is (St_RESET, St_ERROR, St_START, St_STOP);
     signal state, next_state : state_type := St_RESET;
 
     -- Internal signals
@@ -29,6 +28,8 @@ architecture Behavioral of mucodec is
     signal second_char  : integer := 0;
     signal letter       : std_logic_vector(7 downto 0) := (others => '0');
     signal STOP_COUNTER : integer := 0;
+    signal valid_counter: std_logic;
+    signal dtest :std_logic;
 
 begin
 
@@ -37,6 +38,7 @@ begin
     begin
         if clr = '1' then
             state <= St_RESET;
+            dvalid <= '0';
         elsif rising_edge(clk) then
             state <= next_state;
         end if;
@@ -81,9 +83,11 @@ begin
                     if position = 1 then
                         number(2 downto 0) <= din;
                         position <= 0;
+                        valid_counter <= '0';
                     elsif position = 0 then
                         number(5 downto 3) <= din;
                         position <= 1;
+                        valid_counter <= '1';
                         
                         case number is
                             when "001010" => letter <= "01000001"; -- A
@@ -156,11 +160,14 @@ begin
     end process;
 
     -- Output logic 
-    output_logic: process (state)
+    output_logic: process (state, letter, valid_counter)
     begin
         case state is
             when St_ERROR =>
                 error <= '1';
+            when ST_START =>
+                dout   <= letter;
+                error  <= '0';
             when others =>
                 dout   <= (others => '0');
                 dvalid <= '0';
