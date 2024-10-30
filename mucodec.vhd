@@ -1,3 +1,4 @@
+
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 
@@ -27,9 +28,14 @@ architecture Behavioral of mucodec is
     signal first_char   : integer := 0;
     signal second_char  : integer := 0;
     signal letter       : std_logic_vector(7 downto 0) := (others => '0');
+    signal test_valid  : std_logic := '0';
+    signal count_valid : std_logic := '0';
+    signal counter_mid : integer := 0;
     signal STOP_COUNTER : integer := 0;
-    signal valid_counter: std_logic;
-    signal dtest :std_logic;
+    signal valid_counter: integer := 0;
+    signal mid_counter  : integer := 0;
+    signal sum_counter  : integer := 0;
+    signal new_letter : std_logic := '0';
 
 begin
 
@@ -38,7 +44,6 @@ begin
     begin
         if clr = '1' then
             state <= St_RESET;
-            dvalid <= '0';
         elsif rising_edge(clk) then
             state <= next_state;
         end if;
@@ -80,15 +85,32 @@ begin
 
             when St_START =>
                 if valid = '1' then
+                    if count_valid = '1' then
+                        if mid_counter = 1 then
+                            test_valid <= '0';
+                        elsif mid_counter > 11 then
+                            test_valid <= '0';
+                        else
+                            test_valid <= '1';
+                        end if;
+                        --test_valid <= '1';
+                        count_valid <= '0';
+                        else
+                            count_valid <= '1';
+                    end if;
+                    
+                    
                     if position = 1 then
                         number(2 downto 0) <= din;
                         position <= 0;
-                        valid_counter <= '0';
+                        --valid_counter <= '0';
+                        valid_counter <= valid_counter + 1;
                     elsif position = 0 then
+                        new_letter <= '1';
                         number(5 downto 3) <= din;
                         position <= 1;
-                        valid_counter <= '1';
-                        
+                        --sum valid counter
+                        mid_counter <= mid_counter + 1;
                         case number is
                             when "001010" => letter <= "01000001"; -- A
                             when "001011" => letter <= "01000010"; -- B
@@ -130,9 +152,12 @@ begin
                             when others =>
                                 next_state <= St_ERROR;
                         end case;
-                        next_state <= ST_START;
 
+                        next_state <= St_START;
                     end if;
+                    else 
+                            
+                        test_valid <= '0';
                 end if;
 
             when St_STOP =>
@@ -153,6 +178,7 @@ begin
                 second_char <= 0;
                 letter      <= (others => '0');
                 next_state  <= St_RESET;
+                stop_counter <= 0;
 
             when others =>
                 next_state <= St_ERROR;
@@ -160,14 +186,16 @@ begin
     end process;
 
     -- Output logic 
-    output_logic: process (state, letter, valid_counter)
+    output_logic: process (state, letter, test_valid)
     begin
         case state is
             when St_ERROR =>
                 error <= '1';
-            when ST_START =>
+            when St_START =>
                 dout   <= letter;
+                --dvalid <= test_valid;
                 error  <= '0';
+
             when others =>
                 dout   <= (others => '0');
                 dvalid <= '0';
